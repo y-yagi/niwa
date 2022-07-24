@@ -29,6 +29,11 @@ jobs:
       with:
         version: latest
 
+    - name: Gosec
+      uses: securego/gosec@master
+      with:
+        args: ./...
+
     - name: Run test
       run: |
         go test -v ./...
