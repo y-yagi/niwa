@@ -4,6 +4,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"path/filepath"
 
 	"github.com/pelletier/go-toml"
 )
@@ -58,7 +59,7 @@ func ParseConfigfile(filename string) (*Config, error) {
 		return cfg, nil
 	}
 
-	f, err := os.Open(filename)
+	f, err := os.Open(filepath.Clean(filename))
 	if err != nil {
 		return nil, err
 	}
