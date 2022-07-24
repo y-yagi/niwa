@@ -70,7 +70,7 @@ func buildLogger(logconfig *Log) (*log.Logger, error) {
 	case "discard":
 		return nil, nil
 	case "file":
-		f, err := os.OpenFile(logconfig.File.Path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		f, err := os.OpenFile(logconfig.File.Path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 		if err != nil {
 			return nil, err
 		}

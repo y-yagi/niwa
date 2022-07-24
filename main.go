@@ -61,10 +61,11 @@ func run(args []string, outStream, errStream io.Writer) (exitCode int) {
 	mux.HandleFunc("/", rootHandler)
 
 	s := &http.Server{
-		Addr:         ":" + port,
-		Handler:      mux,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		Addr:              ":" + port,
+		Handler:           mux,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	if len(config.Certfile) != 0 && len(config.Keyfile) != 0 {
