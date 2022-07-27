@@ -6,23 +6,26 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/dustin/go-humanize"
 	"github.com/pelletier/go-toml"
 )
 
 type Config struct {
-	Root            string    `toml:"root"`
-	Port            string    `toml:"port"`
-	Certfile        string    `toml:"certfile"`
-	Keyfile         string    `toml:"keyfile"`
-	Rules           []Rule    `toml:"rules"`
-	ReverseProxyURL string    `toml:"reverse_proxy"`
-	Headers         []Header  `toml:"headers"`
-	Routings        []Routing `toml:"routings"`
-	Log             Log       `toml:"log"`
-	RuleMap         map[string]string
-	RoutingMap      map[string]Routing
-	ReverseProxy    *httputil.ReverseProxy
-	Logging         *Logging
+	Root                  string    `toml:"root"`
+	Port                  string    `toml:"port"`
+	Certfile              string    `toml:"certfile"`
+	Keyfile               string    `toml:"keyfile"`
+	Rules                 []Rule    `toml:"rules"`
+	ReverseProxyURL       string    `toml:"reverse_proxy"`
+	Headers               []Header  `toml:"headers"`
+	Routings              []Routing `toml:"routings"`
+	Log                   Log       `toml:"log"`
+	RequestBodyMaxSizeStr string    `toml:"request_body_max_size"`
+	RuleMap               map[string]string
+	RoutingMap            map[string]Routing
+	ReverseProxy          *httputil.ReverseProxy
+	Logging               *Logging
+	RequestBodyMaxSize    uint64
 }
 
 type Rule struct {
@@ -94,6 +97,12 @@ func ParseConfigfile(filename string) (*Config, error) {
 			routing.ReverseProxy = httputil.NewSingleHostReverseProxy(url)
 		}
 		cfg.RoutingMap[routing.Path] = routing
+	}
+
+	if cfg.RequestBodyMaxSizeStr != "" {
+		if cfg.RequestBodyMaxSize, err = humanize.ParseBytes(cfg.RequestBodyMaxSizeStr); err != nil {
+			return nil, err
+		}
 	}
 
 	return cfg, nil
