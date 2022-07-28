@@ -58,7 +58,7 @@ func run(args []string, outStream, errStream io.Writer) (exitCode int) {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", rootHandler)
+	mux.Handle("/", buildRouter())
 
 	s := &http.Server{
 		Addr:              ":" + port,

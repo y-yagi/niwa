@@ -7,14 +7,15 @@ import (
 	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 	"testing"
 )
 
 func TestRoot(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(rootHandler))
+	config = &Config{}
+	ts := httptest.NewServer(buildRouter())
 	defer ts.Close()
 
-	config = &Config{}
 	client := ts.Client()
 
 	body, err := getBodyFromURL(client, ts.URL)
@@ -29,10 +30,9 @@ func TestRoot(t *testing.T) {
 }
 
 func TestServeFile(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(rootHandler))
-	defer ts.Close()
-
 	config = &Config{Root: "testdata"}
+	ts := httptest.NewServer(buildRouter())
+	defer ts.Close()
 
 	client := ts.Client()
 	body, err := getBodyFromURL(client, ts.URL+"/public/user.json")
@@ -49,9 +49,6 @@ func TestServeFile(t *testing.T) {
 func TestProxy(t *testing.T) {
 	asbody := "Hello from application server"
 
-	ts := httptest.NewServer(http.HandlerFunc(rootHandler))
-	defer ts.Close()
-
 	as := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, asbody)
 	}))
@@ -63,6 +60,10 @@ func TestProxy(t *testing.T) {
 	}
 
 	config = &Config{ReverseProxy: httputil.NewSingleHostReverseProxy(url)}
+
+	ts := httptest.NewServer(buildRouter())
+	defer ts.Close()
+
 	client := ts.Client()
 	body, err := getBodyFromURL(client, ts.URL)
 	if err != nil {
@@ -75,11 +76,11 @@ func TestProxy(t *testing.T) {
 }
 
 func TestRule(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(rootHandler))
-	defer ts.Close()
-
 	config = &Config{Root: "testdata", RuleMap: map[string]string{}}
 	config.RuleMap["/public/from.html"] = "/public/user.json"
+
+	ts := httptest.NewServer(buildRouter())
+	defer ts.Close()
 
 	client := ts.Client()
 	body, err := getBodyFromURL(client, ts.URL+"/public/from.html")
@@ -94,11 +95,11 @@ func TestRule(t *testing.T) {
 }
 
 func TestHeaders(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(rootHandler))
-	defer ts.Close()
-
 	config = &Config{Root: "testdata"}
 	config.Headers = append(config.Headers, Header{Key: "Key", Value: "Value"})
+
+	ts := httptest.NewServer(buildRouter())
+	defer ts.Close()
 
 	client := ts.Client()
 	res, err := client.Get(ts.URL + "/public/user.json")
@@ -114,9 +115,6 @@ func TestHeaders(t *testing.T) {
 func TestRoutings(t *testing.T) {
 	asbody := "Hello from application server"
 
-	ts := httptest.NewServer(http.HandlerFunc(rootHandler))
-	defer ts.Close()
-
 	as := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, asbody)
 	}))
@@ -131,6 +129,9 @@ func TestRoutings(t *testing.T) {
 	config.RoutingMap = map[string]Routing{}
 	routing := Routing{ReverseProxy: httputil.NewSingleHostReverseProxy(url)}
 	config.RoutingMap["/app"] = routing
+
+	ts := httptest.NewServer(buildRouter())
+	defer ts.Close()
 
 	client := ts.Client()
 	body, err := getBodyFromURL(client, ts.URL)
@@ -150,6 +151,32 @@ func TestRoutings(t *testing.T) {
 
 	if string(body) != asbody+"\n" {
 		t.Errorf("got: %s, wont: %s", body, asbody)
+	}
+}
+
+func TestRequestBodyMaxSize(t *testing.T) {
+	config = &Config{RequestBodyMaxSize: 20}
+	ts := httptest.NewServer(buildRouter())
+	defer ts.Close()
+
+	body := strings.NewReader("This is a short text")
+	client := ts.Client()
+	res, err := client.Post(ts.URL, "text/plain", body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("got: %v, wont: %v", res.StatusCode, http.StatusOK)
+	}
+
+	body = strings.NewReader("This is a long long long data")
+	res, err = client.Post(ts.URL, "text/plain", body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Errorf("got: %v, wont: %v", res.StatusCode, http.StatusRequestEntityTooLarge)
 	}
 }
 
