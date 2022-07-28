@@ -23,7 +23,28 @@ func (cw *captureWriter) Write(b []byte) (int, error) {
 	return size, err
 }
 
-func rootHandler(w http.ResponseWriter, r *http.Request) {
+func buildRouter() http.Handler {
+	if config.RequestBodyMaxSize > 0 {
+		return http.MaxBytesHandler(&Router{}, int64(config.RequestBodyMaxSize))
+	}
+
+	return &Router{}
+}
+
+type Router struct{}
+
+func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if config.RequestBodyMaxSize > 0 {
+		l := r.ContentLength
+		body := make([]byte, l)
+		_, err := r.Body.Read(body)
+		if err != nil && err.Error() == "http: request body too large" {
+			_ = config.Logging.Write(w, r, http.StatusRequestEntityTooLarge, 0)
+			w.WriteHeader(http.StatusRequestEntityTooLarge)
+			return
+		}
+	}
+
 	if config.ReverseProxy != nil {
 		config.ReverseProxy.ServeHTTP(w, r)
 		return
