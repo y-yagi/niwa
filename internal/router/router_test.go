@@ -1,4 +1,4 @@
-package main
+package router_test
 
 import (
 	"fmt"
@@ -9,11 +9,14 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/y-yagi/niwa/internal/config"
+	"github.com/y-yagi/niwa/internal/router"
 )
 
 func TestRoot(t *testing.T) {
-	config = &Config{}
-	ts := httptest.NewServer(buildRouter())
+	conf := &config.Config{}
+	ts := httptest.NewServer(router.New(conf))
 	defer ts.Close()
 
 	client := ts.Client()
@@ -30,8 +33,8 @@ func TestRoot(t *testing.T) {
 }
 
 func TestServeFile(t *testing.T) {
-	config = &Config{Root: "testdata"}
-	ts := httptest.NewServer(buildRouter())
+	conf := &config.Config{Root: "../../testdata"}
+	ts := httptest.NewServer(router.New(conf))
 	defer ts.Close()
 
 	client := ts.Client()
@@ -59,9 +62,9 @@ func TestProxy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	config = &Config{ReverseProxy: httputil.NewSingleHostReverseProxy(url)}
+	conf := &config.Config{ReverseProxy: httputil.NewSingleHostReverseProxy(url)}
 
-	ts := httptest.NewServer(buildRouter())
+	ts := httptest.NewServer(router.New(conf))
 	defer ts.Close()
 
 	client := ts.Client()
@@ -76,10 +79,10 @@ func TestProxy(t *testing.T) {
 }
 
 func TestRule(t *testing.T) {
-	config = &Config{Root: "testdata", RuleMap: map[string]string{}}
-	config.RuleMap["/public/from.html"] = "/public/user.json"
+	conf := &config.Config{Root: "../../testdata", RuleMap: map[string]string{}}
+	conf.RuleMap["/public/from.html"] = "/public/user.json"
 
-	ts := httptest.NewServer(buildRouter())
+	ts := httptest.NewServer(router.New(conf))
 	defer ts.Close()
 
 	client := ts.Client()
@@ -95,10 +98,10 @@ func TestRule(t *testing.T) {
 }
 
 func TestHeaders(t *testing.T) {
-	config = &Config{Root: "testdata"}
-	config.Headers = append(config.Headers, Header{Key: "Key", Value: "Value"})
+	conf := &config.Config{Root: "testdata"}
+	conf.Headers = append(conf.Headers, config.Header{Key: "Key", Value: "Value"})
 
-	ts := httptest.NewServer(buildRouter())
+	ts := httptest.NewServer(router.New(conf))
 	defer ts.Close()
 
 	client := ts.Client()
@@ -125,12 +128,12 @@ func TestRoutings(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	config = &Config{}
-	config.RoutingMap = map[string]Routing{}
-	routing := Routing{ReverseProxy: httputil.NewSingleHostReverseProxy(url)}
-	config.RoutingMap["/app"] = routing
+	conf := &config.Config{}
+	conf.RoutingMap = map[string]config.Routing{}
+	routing := config.Routing{ReverseProxy: httputil.NewSingleHostReverseProxy(url)}
+	conf.RoutingMap["/app"] = routing
 
-	ts := httptest.NewServer(buildRouter())
+	ts := httptest.NewServer(router.New(conf))
 	defer ts.Close()
 
 	client := ts.Client()
@@ -155,8 +158,8 @@ func TestRoutings(t *testing.T) {
 }
 
 func TestRequestBodyMaxSize(t *testing.T) {
-	config = &Config{RequestBodyMaxSize: 20}
-	ts := httptest.NewServer(buildRouter())
+	conf := &config.Config{RequestBodyMaxSize: 20}
+	ts := httptest.NewServer(router.New(conf))
 	defer ts.Close()
 
 	body := strings.NewReader("This is a short text")

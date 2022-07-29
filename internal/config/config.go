@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"net/http/httputil"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/pelletier/go-toml"
+	"github.com/y-yagi/niwa/internal/logging"
 )
 
 type Config struct {
@@ -24,7 +25,7 @@ type Config struct {
 	RuleMap               map[string]string
 	RoutingMap            map[string]Routing
 	ReverseProxy          *httputil.ReverseProxy
-	Logging               *Logging
+	Logging               *logging.Logging
 	RequestBodyMaxSize    uint64
 }
 
@@ -84,7 +85,8 @@ func ParseConfigfile(filename string) (*Config, error) {
 		cfg.ReverseProxy = httputil.NewSingleHostReverseProxy(url)
 	}
 
-	if cfg.Logging, err = NewLogging(&cfg.Log); err != nil {
+	logconfig := logging.LogConfig{Output: cfg.Log.Output, Format: cfg.Log.Format, FilePath: cfg.Log.File.Path}
+	if cfg.Logging, err = logging.New(&logconfig); err != nil {
 		return nil, err
 	}
 

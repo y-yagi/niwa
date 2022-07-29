@@ -1,11 +1,13 @@
-package main
+package config_test
 
 import (
 	"testing"
+
+	"github.com/y-yagi/niwa/internal/config"
 )
 
 func TestParseConfigFile(t *testing.T) {
-	config, err := ParseConfigfile("testdata/config.toml")
+	config, err := config.ParseConfigfile("../../testdata/config.toml")
 	if err != nil {
 		t.Errorf("Parse file error: %v", err)
 	}
