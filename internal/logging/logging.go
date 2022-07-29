@@ -1,4 +1,4 @@
-package main
+package logging
 
 import (
 	"bytes"
@@ -26,9 +26,15 @@ type LogFormat struct {
 	HttpUserAgent  string
 }
 
+type LogConfig struct {
+	Output   string
+	Format   string
+	FilePath string
+}
+
 const defaultLogFormat = `{{.RemoteAddr}} [{{.TimeLocal}}] "{{.RequestMethod}} {{.ServerProtocol}}" {{.Status}} {{.BodyBytesSent}} "{{.HttpReferer}}" "{{.HttpUserAgent}}"`
 
-func NewLogging(logconfig *Log) (*Logging, error) {
+func New(logconfig *LogConfig) (*Logging, error) {
 	var err error
 	logging := &Logging{}
 
@@ -59,7 +65,7 @@ func (l *Logging) Write(w http.ResponseWriter, r *http.Request, status int, cont
 	return nil
 }
 
-func buildLogger(logconfig *Log) (*log.Logger, error) {
+func buildLogger(logconfig *LogConfig) (*log.Logger, error) {
 	switch logconfig.Output {
 	case "stdout":
 		return log.New(os.Stdout, "", 0), nil
@@ -70,7 +76,7 @@ func buildLogger(logconfig *Log) (*log.Logger, error) {
 	case "discard":
 		return nil, nil
 	case "file":
-		f, err := os.OpenFile(logconfig.File.Path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+		f, err := os.OpenFile(logconfig.FilePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 		if err != nil {
 			return nil, err
 		}
@@ -80,8 +86,8 @@ func buildLogger(logconfig *Log) (*log.Logger, error) {
 	}
 }
 
-func buildLogFormatTemplate(log *Log) (*template.Template, error) {
-	format := log.Format
+func buildLogFormatTemplate(logconfig *LogConfig) (*template.Template, error) {
+	format := logconfig.Format
 	if len(format) == 0 {
 		format = defaultLogFormat
 	}

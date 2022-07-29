@@ -12,6 +12,9 @@ import (
 	"os/signal"
 	"runtime"
 	"time"
+
+	"github.com/y-yagi/niwa/internal/config"
+	"github.com/y-yagi/niwa/internal/router"
 )
 
 const cmd = "niwa"
@@ -19,7 +22,6 @@ const cmd = "niwa"
 var (
 	flags          *flag.FlagSet
 	configFilename string
-	config         *Config
 	showVersion    bool
 
 	version = "devel"
@@ -47,18 +49,18 @@ func run(args []string, outStream, errStream io.Writer) (exitCode int) {
 		return 0
 	}
 
-	config, err = ParseConfigfile(configFilename)
+	conf, err := config.ParseConfigfile(configFilename)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	port := "8080"
-	if config.Port != "" {
-		port = config.Port
+	if conf.Port != "" {
+		port = conf.Port
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/", buildRouter())
+	mux.Handle("/", router.New(conf))
 
 	s := &http.Server{
 		Addr:              ":" + port,
@@ -68,9 +70,9 @@ func run(args []string, outStream, errStream io.Writer) (exitCode int) {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	if len(config.Certfile) != 0 && len(config.Keyfile) != 0 {
+	if len(conf.Certfile) != 0 && len(conf.Keyfile) != 0 {
 		go func() {
-			if err = s.ListenAndServeTLS(config.Certfile, config.Keyfile); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			if err = s.ListenAndServeTLS(conf.Certfile, conf.Keyfile); err != nil && !errors.Is(err, http.ErrServerClosed) {
 				log.Fatal(err)
 			}
 		}()
