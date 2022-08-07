@@ -14,11 +14,24 @@ type Router struct {
 
 func New(conf *config.Config) http.Handler {
 	router := &Router{conf: conf}
-	if conf.RequestBodyMaxSize > 0 {
-		return http.MaxBytesHandler(router, int64(conf.RequestBodyMaxSize))
+	var handler http.Handler
+
+	if conf.Timelimit != 0 {
+		handler = http.TimeoutHandler(router, conf.Timelimit, "")
 	}
 
-	return router
+	if conf.RequestBodyMaxSize > 0 {
+		if handler == nil {
+			handler = router
+		}
+		handler = http.MaxBytesHandler(handler, int64(conf.RequestBodyMaxSize))
+	}
+
+	if handler == nil {
+		handler = router
+	}
+
+	return handler
 }
 
 func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {

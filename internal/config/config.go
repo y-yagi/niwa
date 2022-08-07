@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/pelletier/go-toml"
@@ -22,11 +23,13 @@ type Config struct {
 	Routings              []Routing `toml:"routings"`
 	Log                   Log       `toml:"log"`
 	RequestBodyMaxSizeStr string    `toml:"request_body_max_size"`
+	TimelimitStr          string    `toml:"timelimit"`
 	RuleMap               map[string]string
 	RoutingMap            map[string]Routing
 	ReverseProxy          *httputil.ReverseProxy
 	Logging               *logging.Logging
 	RequestBodyMaxSize    uint64
+	Timelimit             time.Duration
 }
 
 type Rule struct {
@@ -103,6 +106,12 @@ func ParseConfigfile(filename string) (*Config, error) {
 
 	if cfg.RequestBodyMaxSizeStr != "" {
 		if cfg.RequestBodyMaxSize, err = humanize.ParseBytes(cfg.RequestBodyMaxSizeStr); err != nil {
+			return nil, err
+		}
+	}
+
+	if cfg.TimelimitStr != "" {
+		if cfg.Timelimit, err = time.ParseDuration(cfg.TimelimitStr); err != nil {
 			return nil, err
 		}
 	}

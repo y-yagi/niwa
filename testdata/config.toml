@@ -4,6 +4,7 @@ root = "testdata"
 reverse_proxy = "http://localhost:3000"
 
 request_body_max_size = "1K"
+timielimit = "5s"
 
 [[rules]]
 from = "/public/from.html"

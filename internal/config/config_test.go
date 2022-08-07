@@ -23,4 +23,8 @@ func TestParseConfigFile(t *testing.T) {
 	if len(config.RoutingMap) != 1 {
 		t.Errorf("Routing map build error: %+v", config.RoutingMap)
 	}
+
+	if config.Timelimit != 0 {
+		t.Errorf("timelimit build error: %+v", config.Timelimit)
+	}
 }
