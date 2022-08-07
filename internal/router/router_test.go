@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/y-yagi/niwa/internal/config"
 	"github.com/y-yagi/niwa/internal/router"
@@ -196,4 +197,35 @@ func getBodyFromURL(c *http.Client, url string) ([]byte, error) {
 	res.Body.Close()
 
 	return body, err
+}
+
+func TestTimelimit(t *testing.T) {
+	asbody := "Hello from application server"
+
+	as := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(30 * time.Millisecond)
+		fmt.Fprintln(w, asbody)
+	}))
+	defer as.Close()
+
+	url, err := url.Parse(as.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	conf := &config.Config{ReverseProxy: httputil.NewSingleHostReverseProxy(url), Timelimit: 10 * time.Millisecond}
+
+	ts := httptest.NewServer(router.New(conf))
+	defer ts.Close()
+
+	client := ts.Client()
+	body, err := getBodyFromURL(client, ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wont := "<html><head><title>Timeout</title></head><body><h1>Timeout</h1></body></html>"
+	if string(body) != wont {
+		t.Errorf("got: %s, wont: %s", body, wont)
+	}
 }
