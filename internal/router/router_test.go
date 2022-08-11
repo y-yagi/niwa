@@ -213,7 +213,7 @@ func TestTimelimit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	conf := &config.Config{ReverseProxy: httputil.NewSingleHostReverseProxy(url), Timelimit: 10 * time.Millisecond}
+	conf := &config.Config{ReverseProxy: httputil.NewSingleHostReverseProxy(url), Timelimit: 10 * time.Millisecond, RequestBodyMaxSize: 1000}
 
 	ts := httptest.NewServer(router.New(conf))
 	defer ts.Close()

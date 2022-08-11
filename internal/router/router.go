@@ -13,22 +13,15 @@ type Router struct {
 }
 
 func New(conf *config.Config) http.Handler {
-	router := &Router{conf: conf}
 	var handler http.Handler
+	handler = &Router{conf: conf}
 
 	if conf.Timelimit != 0 {
-		handler = http.TimeoutHandler(router, conf.Timelimit, "")
+		handler = http.TimeoutHandler(handler, conf.Timelimit, "")
 	}
 
 	if conf.RequestBodyMaxSize > 0 {
-		if handler == nil {
-			handler = router
-		}
 		handler = http.MaxBytesHandler(handler, int64(conf.RequestBodyMaxSize))
-	}
-
-	if handler == nil {
-		handler = router
 	}
 
 	return handler
