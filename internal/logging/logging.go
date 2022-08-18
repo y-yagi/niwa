@@ -49,13 +49,11 @@ func New(logconfig *LogConfig) (*Logging, error) {
 	return logging, nil
 }
 
-func (l *Logging) Write(w http.ResponseWriter, r *http.Request, status int, contentLength int) error {
+func (l *Logging) Write(lf LogFormat) error {
 	if l == nil || l.logger == nil {
 		return nil
 	}
 
-	t := time.Now()
-	lf := LogFormat{RemoteAddr: r.RemoteAddr, TimeLocal: t.Format("02/Jan/2006:15:04:05 -0700"), RequestMethod: r.Method, ServerProtocol: r.Proto, Status: status, BodyBytesSent: contentLength, HttpReferer: r.Referer(), HttpUserAgent: r.UserAgent()}
 	wr := new(bytes.Buffer)
 	if err := l.template.Execute(wr, lf); err != nil {
 		return err
@@ -63,6 +61,12 @@ func (l *Logging) Write(w http.ResponseWriter, r *http.Request, status int, cont
 
 	l.logger.Println(wr.String())
 	return nil
+}
+
+func (l *Logging) WriteHTTPLog(w http.ResponseWriter, r *http.Request, status int, contentLength int) error {
+	t := time.Now()
+	lf := LogFormat{RemoteAddr: r.RemoteAddr, TimeLocal: t.Format("02/Jan/2006:15:04:05 -0700"), RequestMethod: r.Method, ServerProtocol: r.Proto, Status: status, BodyBytesSent: contentLength, HttpReferer: r.Referer(), HttpUserAgent: r.UserAgent()}
+	return l.Write(lf)
 }
 
 func buildLogger(logconfig *LogConfig) (*log.Logger, error) {

@@ -33,7 +33,7 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		body := make([]byte, l)
 		_, err := r.Body.Read(body)
 		if err != nil && err.Error() == "http: request body too large" {
-			_ = router.conf.Logging.Write(w, r, http.StatusRequestEntityTooLarge, 0)
+			_ = router.conf.Logging.WriteHTTPLog(w, r, http.StatusRequestEntityTooLarge, 0)
 			w.WriteHeader(http.StatusRequestEntityTooLarge)
 			return
 		}
@@ -68,11 +68,11 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fh := http.StripPrefix("/public", http.FileServer(http.Dir(router.conf.Root)))
 		scw := &captureWriter{ResponseWriter: w}
 		fh.ServeHTTP(scw, r)
-		_ = router.conf.Logging.Write(w, r, scw.status, scw.size)
+		_ = router.conf.Logging.WriteHTTPLog(w, r, scw.status, scw.size)
 		return
 	}
 
 	msg := "Hello, world"
-	_ = router.conf.Logging.Write(w, r, 200, len(msg))
+	_ = router.conf.Logging.WriteHTTPLog(w, r, 200, len(msg))
 	fmt.Fprint(w, msg)
 }
