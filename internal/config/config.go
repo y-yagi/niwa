@@ -13,6 +13,16 @@ import (
 )
 
 type Config struct {
+	ConfigFile
+	RuleMap            map[string]string
+	RoutingMap         map[string]Routing
+	ReverseProxy       *httputil.ReverseProxy
+	Logging            *logging.Logging
+	RequestBodyMaxSize uint64
+	Timelimit          time.Duration
+}
+
+type ConfigFile struct {
 	Root                  string    `toml:"root"`
 	Port                  string    `toml:"port"`
 	Certfile              string    `toml:"certfile"`
@@ -24,12 +34,6 @@ type Config struct {
 	Log                   Log       `toml:"log"`
 	RequestBodyMaxSizeStr string    `toml:"request_body_max_size"`
 	TimelimitStr          string    `toml:"timelimit"`
-	RuleMap               map[string]string
-	RoutingMap            map[string]Routing
-	ReverseProxy          *httputil.ReverseProxy
-	Logging               *logging.Logging
-	RequestBodyMaxSize    uint64
-	Timelimit             time.Duration
 }
 
 type Rule struct {
@@ -71,11 +75,13 @@ func ParseConfigfile(filename string) (*Config, error) {
 		return nil, err
 	}
 
-	err = toml.NewDecoder(f).Decode(cfg)
+	cfgFile := &ConfigFile{}
+	err = toml.NewDecoder(f).Decode(cfgFile)
 	if err != nil {
 		return nil, err
 	}
 
+	cfg.ConfigFile = *cfgFile
 	for _, rule := range cfg.Rules {
 		cfg.RuleMap[rule.From] = rule.To
 	}

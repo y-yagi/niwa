@@ -34,7 +34,7 @@ func TestRoot(t *testing.T) {
 }
 
 func TestServeFile(t *testing.T) {
-	conf := &config.Config{Root: "../../testdata"}
+	conf := &config.Config{ConfigFile: config.ConfigFile{Root: "../../testdata"}}
 	ts := httptest.NewServer(router.New(conf))
 	defer ts.Close()
 
@@ -80,7 +80,7 @@ func TestProxy(t *testing.T) {
 }
 
 func TestRule(t *testing.T) {
-	conf := &config.Config{Root: "../../testdata", RuleMap: map[string]string{}}
+	conf := &config.Config{ConfigFile: config.ConfigFile{Root: "../../testdata"}, RuleMap: map[string]string{}}
 	conf.RuleMap["/public/from.html"] = "/public/user.json"
 
 	ts := httptest.NewServer(router.New(conf))
@@ -99,7 +99,7 @@ func TestRule(t *testing.T) {
 }
 
 func TestHeaders(t *testing.T) {
-	conf := &config.Config{Root: "testdata"}
+	conf := &config.Config{ConfigFile: config.ConfigFile{Root: "testdata"}}
 	conf.Headers = append(conf.Headers, config.Header{Key: "Key", Value: "Value"})
 
 	ts := httptest.NewServer(router.New(conf))
