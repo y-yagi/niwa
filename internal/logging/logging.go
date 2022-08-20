@@ -2,6 +2,7 @@ package logging
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 type Logging struct {
 	logger   *log.Logger
 	template *template.Template
+	escape   string
 }
 
 type LogFormat struct {
@@ -30,7 +32,10 @@ type LogConfig struct {
 	Output   string
 	Format   string
 	FilePath string
+	Escape   string
 }
+
+type LogEscape int
 
 const defaultLogFormat = `{{.RemoteAddr}} [{{.TimeLocal}}] "{{.RequestMethod}} {{.ServerProtocol}}" {{.Status}} {{.BodyBytesSent}} "{{.HttpReferer}}" "{{.HttpUserAgent}}"`
 
@@ -43,6 +48,10 @@ func New(logconfig *LogConfig) (*Logging, error) {
 	}
 
 	if logging.template, err = buildLogFormatTemplate(logconfig); err != nil {
+		return nil, err
+	}
+
+	if logging.escape, err = buildLogEscape(logconfig); err != nil {
 		return nil, err
 	}
 
@@ -59,7 +68,16 @@ func (l *Logging) Write(lf LogFormat) error {
 		return err
 	}
 
-	l.logger.Println(wr.String())
+	msg := wr.String()
+	if l.escape == "json" {
+		b, err := json.Marshal(msg)
+		if err != nil {
+			return err
+		}
+		msg = string(b)
+	}
+
+	l.logger.Println(msg)
 	return nil
 }
 
@@ -97,4 +115,16 @@ func buildLogFormatTemplate(logconfig *LogConfig) (*template.Template, error) {
 	}
 
 	return template.New("logformat").Parse(format)
+}
+
+func buildLogEscape(logconfig *LogConfig) (string, error) {
+	if len(logconfig.Escape) == 0 {
+		return "", nil
+	}
+
+	if logconfig.Escape != "json" {
+		return "", fmt.Errorf("log escape is invalid value: %s", logconfig.Escape)
+	}
+
+	return logconfig.Escape, nil
 }
