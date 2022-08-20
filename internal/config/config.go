@@ -50,6 +50,7 @@ type Log struct {
 	Output string `toml:"output"`
 	Format string `toml:"format"`
 	File   File   `toml:"file"`
+	Escape string `toml:"escape"`
 }
 
 type Routing struct {
