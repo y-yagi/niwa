@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"sync"
 	"text/template"
 	"time"
 )
@@ -15,6 +17,9 @@ type Logging struct {
 	logger   *log.Logger
 	template *template.Template
 	escape   string
+	mu       sync.Mutex
+	file     *os.File
+	filePath string
 }
 
 type LogFormat struct {
@@ -41,9 +46,9 @@ const defaultLogFormat = `{{.RemoteAddr}} [{{.TimeLocal}}] "{{.RequestMethod}} {
 
 func New(logconfig *LogConfig) (*Logging, error) {
 	var err error
-	logging := &Logging{}
+	logging := &Logging{filePath: logconfig.FilePath}
 
-	if logging.logger, err = buildLogger(logconfig); err != nil {
+	if logging.logger, logging.file, err = buildLogger(logconfig); err != nil {
 		return nil, err
 	}
 
@@ -77,7 +82,9 @@ func (l *Logging) Write(lf LogFormat) error {
 		msg = string(b)
 	}
 
+	l.mu.Lock()
 	l.logger.Println(msg)
+	l.mu.Unlock()
 	return nil
 }
 
@@ -87,24 +94,46 @@ func (l *Logging) WriteHTTPLog(w http.ResponseWriter, r *http.Request, status in
 	return l.Write(lf)
 }
 
-func buildLogger(logconfig *LogConfig) (*log.Logger, error) {
+func (l *Logging) Reopen() error {
+	if l.file == nil {
+		return nil
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	if err := l.file.Sync(); err != nil {
+		return err
+	}
+	if err := l.file.Close(); err != nil {
+		return err
+	}
+	f, err := buildLogFile(l.filePath)
+	if err != nil {
+		return err
+	}
+	l.logger = log.New(f, "", 0)
+	l.file = f
+	return nil
+}
+
+func buildLogger(logconfig *LogConfig) (*log.Logger, *os.File, error) {
 	switch logconfig.Output {
 	case "stdout":
-		return log.New(os.Stdout, "", 0), nil
+		return log.New(os.Stdout, "", 0), nil, nil
 	case "":
-		return log.New(os.Stdout, "", 0), nil
+		return log.New(os.Stdout, "", 0), nil, nil
 	case "stderr":
-		return log.New(os.Stderr, "", 0), nil
+		return log.New(os.Stderr, "", 0), nil, nil
 	case "discard":
-		return nil, nil
+		return nil, nil, nil
 	case "file":
-		f, err := os.OpenFile(logconfig.FilePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+		f, err := buildLogFile(logconfig.FilePath)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		return log.New(f, "", 0), nil
+		return log.New(f, "", 0), f, nil
 	default:
-		return nil, fmt.Errorf("log format is invalid value: %s", logconfig.Output)
+		return nil, nil, fmt.Errorf("log format is invalid value: %s", logconfig.Output)
 	}
 }
 
@@ -127,4 +156,13 @@ func buildLogEscape(logconfig *LogConfig) (string, error) {
 	}
 
 	return logconfig.Escape, nil
+}
+
+func buildLogFile(path string) (*os.File, error) {
+	f, err := os.OpenFile(filepath.Clean(path), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	if err != nil {
+		return nil, err
+	}
+
+	return f, nil
 }

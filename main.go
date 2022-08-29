@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/y-yagi/niwa/internal/config"
@@ -83,6 +84,17 @@ func run(args []string, outStream, errStream io.Writer) (exitCode int) {
 			}
 		}()
 	}
+	sighup := make(chan os.Signal, 1)
+
+	signal.Notify(sighup, syscall.SIGHUP)
+	go func() {
+		for {
+			<-sighup
+			if err := conf.Logging.Reopen(); err != nil {
+				log.Fatal(err)
+			}
+		}
+	}()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
