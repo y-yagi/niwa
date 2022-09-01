@@ -2,3 +2,4 @@ niwa
 public/
 localhost*.pem
 *.log
+config.toml
