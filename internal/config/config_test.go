@@ -27,4 +27,8 @@ func TestParseConfigFile(t *testing.T) {
 	if config.Timelimit != 0 {
 		t.Errorf("timelimit build error: %+v", config.Timelimit)
 	}
+
+	if config.Port != "8080" {
+		t.Errorf("port build error: %+v", config.Port)
+	}
 }

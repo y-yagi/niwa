@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -20,11 +21,12 @@ type Config struct {
 	Logging            *logging.Logging
 	RequestBodyMaxSize uint64
 	Timelimit          time.Duration
+	Port               string
 }
 
 type ConfigFile struct {
 	Root                  string    `toml:"root"`
-	Port                  string    `toml:"port"`
+	Porti                 int       `toml:"port"`
 	Certfile              string    `toml:"certfile"`
 	Keyfile               string    `toml:"keyfile"`
 	Rules                 []Rule    `toml:"rules"`
@@ -121,6 +123,10 @@ func ParseConfigfile(filename string) (*Config, error) {
 		if cfg.Timelimit, err = time.ParseDuration(cfg.TimelimitStr); err != nil {
 			return nil, err
 		}
+	}
+
+	if cfg.Porti != 0 {
+		cfg.Port = strconv.Itoa(cfg.Porti)
 	}
 
 	return cfg, nil

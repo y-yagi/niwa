@@ -2,6 +2,7 @@ root = "testdata"
 # certfile ="./localhost.pem"
 # keyfile ="./localhost-key.pem"
 reverse_proxy = "http://localhost:3000"
+port = 8080
 
 request_body_max_size = "1K"
 timielimit = "5s"
