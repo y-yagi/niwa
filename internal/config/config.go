@@ -25,6 +25,10 @@ type Config struct {
 }
 
 type ConfigFile struct {
+	Sites []Site `toml:"sites"`
+}
+
+type Site struct {
 	Root                  string    `toml:"root"`
 	Porti                 int       `toml:"port"`
 	Certfile              string    `toml:"certfile"`
