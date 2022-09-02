@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/y-yagi/niwa/internal/config"
 	"github.com/y-yagi/niwa/internal/router"
+	"golang.org/x/sync/errgroup"
 )
 
 const cmd = "niwa"
@@ -47,14 +47,64 @@ func run(args []string, outStream, errStream io.Writer) (exitCode int) {
 
 	if showVersion {
 		fmt.Fprintf(outStream, "%s %s (runtime: %s)\n", cmd, version, runtime.Version())
-		return 0
+		return
 	}
 
 	conf, err := config.ParseConfigfile(configFilename)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("parse config file error %+v\n", err)
+		exitCode = 1
+		return
 	}
 
+	ctx, done := context.WithCancel(context.Background())
+	defer done()
+	g, gctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		return startServer(gctx, conf)
+	})
+
+	g.Go(func() error {
+		sighup := make(chan os.Signal, 1)
+		signal.Notify(sighup, syscall.SIGHUP)
+
+		for {
+			select {
+			case <-sighup:
+				if err := conf.Logging.Reopen(); err != nil {
+					return err
+				}
+			case <-gctx.Done():
+				return gctx.Err()
+			}
+
+		}
+	})
+
+	g.Go(func() error {
+		stop := make(chan os.Signal, 1)
+		signal.Notify(stop, os.Interrupt)
+
+		select {
+		case <-stop:
+			done()
+		case <-gctx.Done():
+			return gctx.Err()
+		}
+
+		return nil
+	})
+
+	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
+		fmt.Println(err)
+		exitCode = 1
+	}
+
+	return
+}
+
+func startServer(ctx context.Context, conf *config.Config) error {
 	port := "8080"
 	if conf.Port != "" {
 		port = conf.Port
@@ -71,41 +121,26 @@ func run(args []string, outStream, errStream io.Writer) (exitCode int) {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	if len(conf.Certfile) != 0 && len(conf.Keyfile) != 0 {
-		go func() {
-			if err = s.ListenAndServeTLS(conf.Certfile, conf.Keyfile); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				log.Fatal(err)
-			}
-		}()
-	} else {
-		go func() {
-			if err = s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				log.Fatal(err)
-			}
-		}()
-	}
-	sighup := make(chan os.Signal, 1)
-
-	signal.Notify(sighup, syscall.SIGHUP)
+	errCh := make(chan error)
 	go func() {
-		for {
-			<-sighup
-			if err := conf.Logging.Reopen(); err != nil {
-				log.Fatal(err)
+		defer close(errCh)
+		if len(conf.Certfile) > 0 && len(conf.Keyfile) > 0 {
+			if err := s.ListenAndServeTLS(conf.Certfile, conf.Keyfile); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				errCh <- err
+			}
+		} else {
+			if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				errCh <- err
 			}
 		}
 	}()
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt)
-
-	<-stop
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := s.Shutdown(ctx); err != nil {
-		log.Fatal(err)
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+		tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		return s.Shutdown(tctx)
 	}
-
-	return
 }
