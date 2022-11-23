@@ -27,6 +27,7 @@ type Config struct {
 type ConfigFile struct {
 	Root                  string    `toml:"root"`
 	Porti                 int       `toml:"port"`
+	Host                  string    `toml:"host"`
 	Certfile              string    `toml:"certfile"`
 	Keyfile               string    `toml:"keyfile"`
 	Rules                 []Rule    `toml:"rules"`
