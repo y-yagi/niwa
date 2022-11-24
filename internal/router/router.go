@@ -39,6 +39,11 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if !router.isValidRequest(w, r) {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
 	if router.conf.ReverseProxy != nil {
 		router.conf.ReverseProxy.ServeHTTP(w, r)
 		return
@@ -75,4 +80,12 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	msg := "Hello, world"
 	_ = router.conf.Logging.WriteHTTPLog(w, r, 200, len(msg))
 	fmt.Fprint(w, msg)
+}
+
+func (router *Router) isValidRequest(w http.ResponseWriter, r *http.Request) bool {
+	if len(router.conf.Host) == 0 {
+		return true
+	}
+
+	return router.conf.Host == r.Host
 }

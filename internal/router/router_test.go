@@ -229,3 +229,64 @@ func TestTimelimit(t *testing.T) {
 		t.Errorf("got: %s, wont: %s", body, wont)
 	}
 }
+
+func TestHost_NoHostHeader(t *testing.T) {
+	conf := &config.Config{}
+	conf.Host = "niwa.test"
+	ts := httptest.NewServer(router.New(conf))
+	defer ts.Close()
+
+	client := ts.Client()
+	res, err := client.Get(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.StatusCode != http.StatusNotFound {
+		t.Errorf("got: %v, wont: %v", res.StatusCode, http.StatusNotFound)
+	}
+}
+
+func TestHost_ValidHostHeader(t *testing.T) {
+	conf := &config.Config{}
+	conf.Host = "niwa.test"
+	ts := httptest.NewServer(router.New(conf))
+	defer ts.Close()
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", ts.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Host = "niwa.test"
+	res, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("got: %v, wont: %v", res.StatusCode, http.StatusOK)
+	}
+}
+
+func TestHost_InvalidHostHeader(t *testing.T) {
+	conf := &config.Config{}
+	conf.Host = "niwa.test"
+	ts := httptest.NewServer(router.New(conf))
+	defer ts.Close()
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", ts.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Host = "non-niwa.test"
+	res, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.StatusCode != http.StatusNotFound {
+		t.Errorf("got: %v, wont: %v", res.StatusCode, http.StatusNotFound)
+	}
+}
