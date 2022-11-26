@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strconv"
 
 	"github.com/y-yagi/niwa/internal/config"
 	"github.com/y-yagi/niwa/internal/server"
@@ -51,6 +52,18 @@ func run(args []string, outStream, errStream io.Writer) (exitCode int) {
 		fmt.Printf("parse config file error %+v\n", err)
 		exitCode = 1
 		return
+	}
+
+	if conf.PidFile != "" {
+		pid := []byte(strconv.Itoa(os.Getpid()) + "\n")
+		/* #nosec G306 */
+		err := os.WriteFile(conf.PidFile, pid, 0644)
+		if err != nil {
+			fmt.Printf("pid file creating was error%+v\n", err)
+			exitCode = 1
+			return
+		}
+		defer os.Remove(conf.PidFile)
 	}
 
 	ctx, done := context.WithCancel(context.Background())

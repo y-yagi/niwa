@@ -37,6 +37,7 @@ type ConfigFile struct {
 	Log                   Log       `toml:"log"`
 	RequestBodyMaxSizeStr string    `toml:"request_body_max_size"`
 	TimelimitStr          string    `toml:"timelimit"`
+	PidFile               string    `toml:"pid_file"`
 }
 
 type Rule struct {
