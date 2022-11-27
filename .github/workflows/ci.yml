@@ -39,3 +39,11 @@ jobs:
         go test -v ./...
       env:
         GO111MODULE: on
+
+    - name: Build binary
+      run: |
+        go build
+
+    - name: Run integration test
+      run: |
+        go run test/integration/main.go ./niwa -c test/integration/niw.toml
