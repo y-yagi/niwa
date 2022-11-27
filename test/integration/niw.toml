@@ -1,0 +1,2 @@
+pid_file = "/tmp/niwa.pid"
+port = 50000
