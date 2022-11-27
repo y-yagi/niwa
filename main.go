@@ -49,7 +49,7 @@ func run(args []string, outStream, errStream io.Writer) (exitCode int) {
 
 	conf, err := config.ParseConfigfile(configFilename)
 	if err != nil {
-		fmt.Printf("parse config file error %+v\n", err)
+		fmt.Fprintf(errStream, "parse config file error %+v\n", err)
 		exitCode = 1
 		return
 	}
@@ -59,7 +59,7 @@ func run(args []string, outStream, errStream io.Writer) (exitCode int) {
 		/* #nosec G306 */
 		err := os.WriteFile(conf.PidFile, pid, 0644)
 		if err != nil {
-			fmt.Printf("pid file creating was error%+v\n", err)
+			fmt.Fprintf(errStream, "pid file creating was error%+v\n", err)
 			exitCode = 1
 			return
 		}
