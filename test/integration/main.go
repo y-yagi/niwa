@@ -32,28 +32,31 @@ func run() int {
 	if err := cmd.Start(); err != nil {
 		return msg(err)
 	}
+
+	time.Sleep(3 * time.Second)
+	exit := make(chan bool)
+
+	go func() {
+		if err := cmd.Wait(); err != nil {
+			exit <- true
+		}
+	}()
+
+	select {
+	case <-exit:
+		return msg(errors.New("command run failed"))
+	case <-time.After(5 * time.Second):
+	}
+
 	defer func() {
 		if err := cmd.Process.Kill(); err != nil {
 			panic(fmt.Errorf("process kill failed %+v", err))
 		}
 	}()
 
-	var res *http.Response
-	var err error
-	retry_count := 5
-
-	for {
-		res, err = http.Get("http://127.0.0.1:50000/")
-		if err != nil {
-			if retry_count > 0 {
-				time.Sleep(time.Second)
-				retry_count--
-			} else {
-				return msg(err)
-			}
-		} else {
-			break
-		}
+	res, err := http.Get("http://127.0.0.1:50000/")
+	if err != nil {
+		return msg(err)
 	}
 
 	body, err := io.ReadAll(res.Body)
