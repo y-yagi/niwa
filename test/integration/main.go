@@ -29,24 +29,19 @@ func run() int {
 
 	/* #nosec */
 	cmd := exec.Command(os.Args[1], os.Args[2:]...)
+	var slurp string
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return msg(err)
+	}
 	if err := cmd.Start(); err != nil {
 		return msg(err)
 	}
 
-	time.Sleep(3 * time.Second)
-	exit := make(chan bool)
-
-	go func() {
-		if err := cmd.Wait(); err != nil {
-			exit <- true
-		}
-	}()
-
-	select {
-	case <-exit:
-		return msg(errors.New("command run failed"))
-	case <-time.After(5 * time.Second):
-	}
+	go func(slurp *string) {
+		t, _ := io.ReadAll(stderr)
+		*slurp = string(t)
+	}(&slurp)
 
 	defer func() {
 		if err := cmd.Process.Kill(); err != nil {
@@ -54,9 +49,26 @@ func run() int {
 		}
 	}()
 
-	res, err := http.Get("http://127.0.0.1:50000/")
-	if err != nil {
-		return msg(err)
+	var res *http.Response
+	retry_count := 3
+
+	for {
+		res, err = http.Get("http://127.0.0.1:50000/")
+		if err != nil {
+			if len(slurp) != 0 {
+				return msg(fmt.Errorf("maybe command failed: %s", slurp))
+			}
+
+			if retry_count > 0 {
+				time.Sleep(time.Second)
+				retry_count--
+			} else {
+				fmt.Printf("DEBUG: %s\n", slurp)
+				return msg(err)
+			}
+		} else {
+			break
+		}
 	}
 
 	body, err := io.ReadAll(res.Body)
