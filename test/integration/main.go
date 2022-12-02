@@ -63,7 +63,6 @@ func run() int {
 				time.Sleep(time.Second)
 				retry_count--
 			} else {
-				fmt.Printf("DEBUG: %s\n", slurp)
 				return msg(err)
 			}
 		} else {
