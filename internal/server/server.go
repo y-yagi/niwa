@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/lucas-clemente/quic-go/http3"
 	"github.com/y-yagi/niwa/internal/config"
 	"github.com/y-yagi/niwa/internal/router"
 	"golang.org/x/sync/errgroup"
@@ -24,7 +25,12 @@ func New(conf *config.Config) *Server {
 
 func (s *Server) Start(g *errgroup.Group, ctx context.Context, done context.CancelFunc) {
 	g.Go(func() error {
-		return s.startServer(ctx)
+		if s.conf.UseHttp3 {
+			return s.startHttp3Server(ctx)
+		} else {
+			return s.startHttpServer(ctx)
+		}
+
 	})
 
 	g.Go(func() error {
@@ -59,18 +65,10 @@ func (s *Server) Start(g *errgroup.Group, ctx context.Context, done context.Canc
 	})
 }
 
-func (s *Server) startServer(ctx context.Context) error {
-	port := "8080"
-	if s.conf.Port != "" {
-		port = s.conf.Port
-	}
-
-	mux := http.NewServeMux()
-	mux.Handle("/", router.New(s.conf))
-
+func (s *Server) startHttpServer(ctx context.Context) error {
 	httpserver := &http.Server{
-		Addr:              ":" + port,
-		Handler:           mux,
+		Addr:              ":" + s.port(),
+		Handler:           s.buildServeMux(),
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
 		ReadHeaderTimeout: 10 * time.Second,
@@ -98,4 +96,36 @@ func (s *Server) startServer(ctx context.Context) error {
 		defer cancel()
 		return httpserver.Shutdown(tctx)
 	}
+}
+
+func (s *Server) startHttp3Server(ctx context.Context) error {
+	errCh := make(chan error)
+	go func() {
+		defer close(errCh)
+		if err := http3.ListenAndServe(":"+s.port(), s.conf.Certfile, s.conf.Keyfile, s.buildServeMux()); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+		return nil
+	}
+}
+
+func (s *Server) port() string {
+	port := "8080"
+	if s.conf.Port != "" {
+		port = s.conf.Port
+	}
+
+	return port
+}
+
+func (s *Server) buildServeMux() *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.Handle("/", router.New(s.conf))
+	return mux
 }
