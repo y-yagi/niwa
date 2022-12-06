@@ -7,7 +7,7 @@ import (
 )
 
 func TestParseConfigFile(t *testing.T) {
-	config, err := config.ParseConfigfile("../../testdata/config.toml")
+	config, err := config.ParseConfigfile("../../testdata/parse_config_test.toml")
 	if err != nil {
 		t.Errorf("Parse file error: %v", err)
 	}
