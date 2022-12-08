@@ -41,6 +41,7 @@ func TestStart(t *testing.T) {
 	g, gctx := errgroup.WithContext(ctx)
 	server := server.New(conf)
 	server.Start(g, gctx, done)
+	time.Sleep(100 * time.Millisecond)
 
 	defer func() {
 		_ = syscall.Kill(syscall.Getpid(), syscall.SIGINT)
