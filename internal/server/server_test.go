@@ -2,15 +2,17 @@ package server_test
 
 import (
 	"context"
-	"errors"
+	"crypto/tls"
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
 
+	"github.com/madflojo/testcerts"
 	"github.com/y-yagi/niwa/internal/config"
 	"github.com/y-yagi/niwa/internal/server"
 	"golang.org/x/sync/errgroup"
@@ -39,6 +41,7 @@ func TestStart(t *testing.T) {
 	g, gctx := errgroup.WithContext(ctx)
 	server := server.New(conf)
 	server.Start(g, gctx, done)
+	time.Sleep(100 * time.Millisecond)
 
 	defer func() {
 		_ = syscall.Kill(syscall.Getpid(), syscall.SIGINT)
@@ -58,36 +61,42 @@ func TestStart(t *testing.T) {
 }
 
 func TestStart_UseHTTP3(t *testing.T) {
-	cerfile := "../../localhost.pem"
-	keyfile := "../../localhost-key.pem"
-
-	if _, err := os.Stat(cerfile); errors.Is(err, os.ErrNotExist) {
-		t.Skip()
+	dir, err := os.MkdirTemp("", "niwa_test")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, err := os.Stat(keyfile); errors.Is(err, os.ErrNotExist) {
-		t.Skip()
+	defer os.RemoveAll(dir)
+
+	cerfile := path.Join(dir, "niwatest.pem")
+	keyfile := path.Join(dir, "niwatest-key.pem")
+	if err = testcerts.GenerateCertsToFile(cerfile, keyfile); err != nil {
+		t.Fatal(err)
 	}
 
-	conf := &config.Config{ConfigFile: config.ConfigFile{UseHttp3: true, Certfile: cerfile, Keyfile: keyfile}}
+	conf := &config.Config{ConfigFile: config.ConfigFile{UseHttp3: true, Certfile: cerfile, Keyfile: keyfile}, Port: "18080"}
 
 	ctx, done := context.WithCancel(context.Background())
 	defer done()
 	g, gctx := errgroup.WithContext(ctx)
 	server := server.New(conf)
 	server.Start(g, gctx, done)
+	time.Sleep(100 * time.Millisecond)
 
 	defer func() {
 		_ = syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 		time.Sleep(200 * time.Millisecond)
 	}()
 
-	client := &http.Client{}
-	res, err := client.Get("https://localhost:8080")
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+	res, err := client.Get("https://localhost:18080")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	expected := "h3=\":8080\""
+	expected := "h3=\":18080\""
 	if !strings.Contains(res.Header.Get("Alt-Svc"), expected) {
 		t.Errorf("expect '%s' included in '%s'", expected, res.Header.Get("Alt-Svc"))
 	}
