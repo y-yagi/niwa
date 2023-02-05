@@ -1,6 +1,6 @@
 module github.com/y-yagi/niwa
 
-go 1.19
+go 1.20
 
 require github.com/dustin/go-humanize v1.0.0
 
@@ -8,6 +8,7 @@ require github.com/pelletier/go-toml/v2 v2.0.6
 
 require (
 	github.com/lucas-clemente/quic-go v0.31.0
+	github.com/madflojo/testcerts v1.0.1
 	golang.org/x/sync v0.1.0
 )
 
@@ -15,7 +16,6 @@ require (
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/pprof v0.0.0-20210407192527-94a9f03dee38 // indirect
-	github.com/madflojo/testcerts v1.0.1 // indirect
 	github.com/marten-seemann/qpack v0.3.0 // indirect
 	github.com/marten-seemann/qtls-go1-18 v0.1.3 // indirect
 	github.com/marten-seemann/qtls-go1-19 v0.1.1 // indirect
