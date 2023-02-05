@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/lucas-clemente/quic-go/http3"
+	"github.com/quic-go/quic-go/http3"
 	"github.com/y-yagi/niwa/internal/config"
 	"github.com/y-yagi/niwa/internal/router"
 	"golang.org/x/sync/errgroup"
